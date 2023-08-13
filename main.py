@@ -1,37 +1,41 @@
 import os
 import tkinter as tk
-import subprocess
 from tkinter import filedialog, messagebox
+from tkinter import ttk
 from PIL import Image
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import configparser
 import threading
-import tkinter as tk
-from tkinter import ttk  # 导入ttk模块
 
 class ImageToPdfConverter:
     def __init__(self, root):
         self.root = root
         self.root.title("Image to PDF Converter")
 
-        self.load_config()  # 加载配置文件
+        self.load_config()
 
         self.select_folder_button = tk.Button(self.root, text="Select Image Folder", command=self.select_image_folder)
         self.select_folder_button.pack()
 
-        self.select_output_button = tk.Button(self.root, text="Select Output Folder", command=self.select_output_folder)
+        self.use_recursive_var = tk.IntVar()
+        self.use_recursive_checkbox = tk.Checkbutton(self.root, text="Use Recursive Output Folder", variable=self.use_recursive_var, command=self.toggle_output_button)
+        self.use_recursive_checkbox.pack()
+
+        self.select_output_button = tk.Button(self.root, text="Select Output Folder", command=self.select_output_folder, state=tk.DISABLED)
         self.select_output_button.pack()
 
         self.convert_button = tk.Button(self.root, text="Convert to PDF", command=self.convert_to_pdf)
         self.convert_button.pack()
+
+        self.folder_label = tk.Label(self.root, text="", bd=1, relief=tk.SUNKEN, anchor=tk.W)
+        self.folder_label.pack(fill=tk.X)
 
         self.progress_label = tk.Label(self.root, text="", bd=1, relief=tk.SUNKEN, anchor=tk.W)
         self.progress_label.pack(fill=tk.X)
 
         self.progress_bar = ttk.Progressbar(self.root, length=300, mode="determinate")
         self.progress_bar.pack()
-        
 
     def load_config(self):
         self.config = configparser.ConfigParser()
@@ -52,21 +56,30 @@ class ImageToPdfConverter:
         self.image_folder = filedialog.askdirectory(title="Select Image Folder")
         self.save_config()
 
+        # 更新选择输出文件按钮状态
+        self.toggle_output_button()
+
+    def toggle_output_button(self):
+        if self.use_recursive_var.get() == 1:
+            self.select_output_button.config(state=tk.DISABLED)
+        else:
+            self.select_output_button.config(state=tk.NORMAL)
+
     def select_output_folder(self):
         self.output_folder = filedialog.askdirectory(title="Select Output Folder")
         self.save_config()
 
-    def merge_images_to_pdf(self):
-        folder_name = os.path.basename(self.image_folder)
+    def merge_images_to_pdf(self, folder_path):
+        folder_name = os.path.basename(folder_path)
         pdf_filename = os.path.join(self.output_folder, f"{folder_name}.pdf")
 
-        image_files = [f for f in os.listdir(self.image_folder) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        image_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('.jpg', '.png'))]
         image_files.sort()
 
         c = canvas.Canvas(pdf_filename, pagesize=letter)
 
         for idx, image_file in enumerate(image_files):
-            image_path = os.path.join(self.image_folder, image_file)
+            image_path = os.path.join(folder_path, image_file)
             img = Image.open(image_path)
             img_width, img_height = img.size
 
@@ -76,37 +89,35 @@ class ImageToPdfConverter:
 
             # 更新进度信息和进度条
             progress_percent = (idx + 1) / len(image_files) * 100
-            self.progress_label.config(text=f"Processing: {idx + 1}/{len(image_files)}")
+            self.progress_label.config(text=f"Current File Processing: {idx + 1}/{len(image_files)}")
             self.progress_bar["value"] = progress_percent
             self.progress_bar.update()
 
         c.save()
 
     def convert_to_pdf(self):
-        if not self.image_folder or not self.output_folder:
+        if not self.image_folder:
             return
 
-        # 清空进度信息和进度条
         self.progress_label.config(text="")
         self.progress_bar["value"] = 0
 
-        # 在新线程中执行文件操作
-        thread = threading.Thread(target=self.execute_file_operation)
+        if self.use_recursive_var.get() == 1:
+            self.output_folder = os.path.dirname(self.image_folder)
+            folders = [self.image_folder]
+        else:
+            folders = [d for d in os.listdir(self.image_folder) if os.path.isdir(os.path.join(self.image_folder, d))]
+
+        thread = threading.Thread(target=self.execute_file_operation, args=(folders,))
         thread.start()
 
-    def execute_file_operation(self):
-        self.merge_images_to_pdf()
+    def execute_file_operation(self, folders):
+        for idx, folder in enumerate(folders):
+            self.folder_label.config(text=f"Current Folder Processing: {folder} ({idx + 1}/{len(folders)})")
+            self.merge_images_to_pdf(os.path.join(self.image_folder, folder))
 
-        # 更新进度信息和进度条
         self.progress_label.config(text="Conversion completed!")
         self.progress_bar["value"] = 100
-
-        # 自动打开 PDF 文件
-        pdf_filename = os.path.join(self.output_folder, f"{os.path.basename(self.image_folder)}.pdf")
-        try:
-            subprocess.Popen(["start", "", pdf_filename], shell=True)
-        except:
-            pass
 
 def main():
     root = tk.Tk()
