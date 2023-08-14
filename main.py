@@ -18,10 +18,6 @@ class ImageToPdfConverter:
         self.select_folder_button = tk.Button(self.root, text="Select Image Folder", command=self.select_image_folder)
         self.select_folder_button.pack()
 
-        self.use_recursive_var = tk.IntVar()
-        self.use_recursive_checkbox = tk.Checkbutton(self.root, text="Use Recursive Output Folder", variable=self.use_recursive_var, command=self.toggle_output_button)
-        self.use_recursive_checkbox.pack()
-
         self.select_output_button = tk.Button(self.root, text="Select Output Folder", command=self.select_output_folder, state=tk.DISABLED)
         self.select_output_button.pack()
 
@@ -57,13 +53,7 @@ class ImageToPdfConverter:
         self.save_config()
 
         # 更新选择输出文件按钮状态
-        self.toggle_output_button()
-
-    def toggle_output_button(self):
-        if self.use_recursive_var.get() == 1:
-            self.select_output_button.config(state=tk.DISABLED)
-        else:
-            self.select_output_button.config(state=tk.NORMAL)
+        self.select_output_button.config(state=tk.NORMAL)
 
     def select_output_folder(self):
         self.output_folder = filedialog.askdirectory(title="Select Output Folder")
@@ -102,11 +92,7 @@ class ImageToPdfConverter:
         self.progress_label.config(text="")
         self.progress_bar["value"] = 0
 
-        if self.use_recursive_var.get() == 1:
-            self.output_folder = os.path.dirname(self.image_folder)
-            folders = [self.image_folder]
-        else:
-            folders = [d for d in os.listdir(self.image_folder) if os.path.isdir(os.path.join(self.image_folder, d))]
+        folders = [d for d in os.listdir(self.image_folder) if os.path.isdir(os.path.join(self.image_folder, d))]
 
         thread = threading.Thread(target=self.execute_file_operation, args=(folders,))
         thread.start()
