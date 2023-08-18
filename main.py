@@ -18,7 +18,7 @@ class ImageToPdfConverter:
         self.select_folder_button = tk.Button(self.root, text="Select Image Folder", command=self.select_image_folder)
         self.select_folder_button.pack()
 
-        self.select_output_button = tk.Button(self.root, text="Select Output Folder", command=self.select_output_folder, state=tk.DISABLED)
+        self.select_output_button = tk.Button(self.root, text="Select Output Folder", command=self.select_output_folder)
         self.select_output_button.pack()
 
         self.convert_button = tk.Button(self.root, text="Convert to PDF", command=self.convert_to_pdf)
@@ -51,9 +51,6 @@ class ImageToPdfConverter:
     def select_image_folder(self):
         self.image_folder = filedialog.askdirectory(title="Select Image Folder")
         self.save_config()
-
-        # 更新选择输出文件按钮状态
-        self.select_output_button.config(state=tk.NORMAL)
 
     def select_output_folder(self):
         self.output_folder = filedialog.askdirectory(title="Select Output Folder")
@@ -94,8 +91,14 @@ class ImageToPdfConverter:
 
         folders = [d for d in os.listdir(self.image_folder) if os.path.isdir(os.path.join(self.image_folder, d))]
 
-        thread = threading.Thread(target=self.execute_file_operation, args=(folders,))
-        thread.start()
+        # 如果没有子文件夹，直接将当前选择的文件夹下的 JPG 文件合并为一个 PDF 文件
+        if not folders:
+            self.merge_images_to_pdf(self.image_folder)
+            self.progress_label.config(text="Conversion completed!")
+            self.progress_bar["value"] = 100
+        else:
+            thread = threading.Thread(target=self.execute_file_operation, args=(folders,))
+            thread.start()
 
     def execute_file_operation(self, folders):
         for idx, folder in enumerate(folders):
