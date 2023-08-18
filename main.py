@@ -74,7 +74,7 @@ class ImageToPdfConverter:
             c.drawImage(image_path, 0, 0, width=img_width, height=img_height)
             c.showPage()
 
-            # 更新进度信息和进度条
+            # Update progress information and progress bar
             progress_percent = (idx + 1) / len(image_files) * 100
             self.progress_label.config(text=f"Current File Processing: {idx + 1}/{len(image_files)}")
             self.progress_bar["value"] = progress_percent
@@ -91,7 +91,7 @@ class ImageToPdfConverter:
 
         folders = [d for d in os.listdir(self.image_folder) if os.path.isdir(os.path.join(self.image_folder, d))]
 
-        # 如果没有子文件夹，直接将当前选择的文件夹下的 JPG 文件合并为一个 PDF 文件
+        # If there are no subfolders, merge all JPG files in the current selected folder into one PDF file
         if not folders:
             self.merge_images_to_pdf(self.image_folder)
             self.progress_label.config(text="Conversion completed!")
