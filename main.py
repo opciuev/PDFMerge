@@ -10,28 +10,32 @@ import threading
 
 class ImageToPdfConverter:
     def __init__(self, root):
-        self.root = root
-        self.root.title("Image to PDF Converter")
-
-        self.load_config()
-
-        self.select_folder_button = tk.Button(self.root, text="Select Image Folder", command=self.select_image_folder)
-        self.select_folder_button.pack()
-
-        self.select_output_button = tk.Button(self.root, text="Select Output Folder", command=self.select_output_folder)
-        self.select_output_button.pack()
-
-        self.convert_button = tk.Button(self.root, text="Convert to PDF", command=self.convert_to_pdf)
-        self.convert_button.pack()
-
-        self.folder_label = tk.Label(self.root, text="", bd=1, relief=tk.SUNKEN, anchor=tk.W)
-        self.folder_label.pack(fill=tk.X)
-
-        self.progress_label = tk.Label(self.root, text="", bd=1, relief=tk.SUNKEN, anchor=tk.W)
-        self.progress_label.pack(fill=tk.X)
-
-        self.progress_bar = ttk.Progressbar(self.root, length=300, mode="determinate")
-        self.progress_bar.pack()
+           self.root = root
+           self.root.title("Image to PDF Converter")
+    
+           self.load_config()
+    
+           self.select_folder_button = tk.Button(self.root, text="Select Image Folder", command=self.select_image_folder)
+           self.select_folder_button.pack(fill=tk.BOTH, expand=True)
+    
+           self.select_output_button = tk.Button(self.root, text="Select Output Folder", command=self.select_output_folder)
+           self.select_output_button.pack(fill=tk.BOTH, expand=True)
+    
+           self.image_structure_var = tk.IntVar()
+           self.image_structure_checkbox = tk.Checkbutton(self.root, text="Images are in subfolders", variable=self.image_structure_var)
+           self.image_structure_checkbox.pack(fill=tk.BOTH, expand=True)
+    
+           self.convert_button = tk.Button(self.root, text="Convert to PDF", command=self.convert_to_pdf)
+           self.convert_button.pack(fill=tk.BOTH, expand=True)
+    
+           self.folder_label = tk.Label(self.root, text="", bd=1, relief=tk.SUNKEN, anchor=tk.W)
+           self.folder_label.pack(fill=tk.BOTH, expand=True)
+    
+           self.progress_label = tk.Label(self.root, text="", bd=1, relief=tk.SUNKEN, anchor=tk.W)
+           self.progress_label.pack(fill=tk.BOTH, expand=True)
+    
+           self.progress_bar = ttk.Progressbar(self.root, length=300, mode="determinate")
+           self.progress_bar.pack(fill=tk.BOTH, expand=True)
 
     def load_config(self):
         self.config = configparser.ConfigParser()
@@ -52,6 +56,10 @@ class ImageToPdfConverter:
         self.image_folder = filedialog.askdirectory(title="Select Image Folder")
         self.save_config()
 
+        # Update checkbox state based on folder structure
+        has_subfolders = any(os.path.isdir(os.path.join(self.image_folder, d)) for d in os.listdir(self.image_folder))
+        self.image_structure_var.set(1 if has_subfolders else 0)
+
     def select_output_folder(self):
         self.output_folder = filedialog.askdirectory(title="Select Output Folder")
         self.save_config()
@@ -60,7 +68,7 @@ class ImageToPdfConverter:
         folder_name = os.path.basename(folder_path)
         pdf_filename = os.path.join(self.output_folder, f"{folder_name}.pdf")
 
-        image_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('.jpg', '.png'))]
+        image_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('.jpg','.jpeg', '.png'))]
         image_files.sort()
 
         c = canvas.Canvas(pdf_filename, pagesize=letter)
@@ -89,16 +97,16 @@ class ImageToPdfConverter:
         self.progress_label.config(text="")
         self.progress_bar["value"] = 0
 
-        folders = [d for d in os.listdir(self.image_folder) if os.path.isdir(os.path.join(self.image_folder, d))]
-
-        # If there are no subfolders, merge all JPG files in the current selected folder into one PDF file
-        if not folders:
+        if self.image_structure_var.get() == 1:
+            # Images are in subfolders
+            folders = [d for d in os.listdir(self.image_folder) if os.path.isdir(os.path.join(self.image_folder, d))]
+            thread = threading.Thread(target=self.execute_file_operation, args=(folders,))
+            thread.start()
+        else:
+            # Images are in the current selected folder
             self.merge_images_to_pdf(self.image_folder)
             self.progress_label.config(text="Conversion completed!")
             self.progress_bar["value"] = 100
-        else:
-            thread = threading.Thread(target=self.execute_file_operation, args=(folders,))
-            thread.start()
 
     def execute_file_operation(self, folders):
         for idx, folder in enumerate(folders):
